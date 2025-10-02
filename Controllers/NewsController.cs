@@ -1,5 +1,6 @@
 ﻿using BBUAPI.Data;
 using BBUAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -25,6 +26,7 @@ namespace BBUAPI.Controllers
 
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<News>>> GetNews()
         {
             var news = await _context.News
@@ -33,7 +35,22 @@ namespace BBUAPI.Controllers
             return news;
         }
 
+        [HttpGet("details/{id}")]
+        [AllowAnonymous]
+        public async Task<ActionResult<News>> GetNewsById(int id)
+        {
+            var news = await _context.News
+                .Include(n => n.Images)
+                .FirstOrDefaultAsync(n => n.Id == id);
+
+            if (news == null)
+                return NotFound();
+
+            return news;
+        }
+
         [HttpGet("getlatest/{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<News>>> GetLatestNews(int id)
         {
             var news = await _context.News
@@ -45,6 +62,7 @@ namespace BBUAPI.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "ManageNews")]
         public async Task<IActionResult> CreateNews([FromForm] CreateNewsDto dto)
         {
             var news = new News
@@ -90,6 +108,19 @@ namespace BBUAPI.Controllers
             }
 
             return CreatedAtAction(nameof(GetNews), new { id = news.Id }, news);
+        }
+
+        [HttpDelete("delete/{id}")]
+        [Authorize(Policy = "ManageNews")]
+        public async Task<ActionResult<News>> DeleteNews(int id)
+        {
+            var news = await _context.News.FirstOrDefaultAsync(n => n.Id == id);
+            if (news == null) return NotFound();
+
+            _context.News.Remove(news);
+            await _context.SaveChangesAsync();
+
+            return news;
         }
 
 

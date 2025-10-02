@@ -1,5 +1,6 @@
 ﻿using BBUAPI.Data;
 using BBUAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -22,6 +23,7 @@ namespace BBUAPI.Controllers
 
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Advertisements>>> GetAdvertisements()
         {
             var advertisements = await _context.Advertisements.ToListAsync();
@@ -30,7 +32,22 @@ namespace BBUAPI.Controllers
             return advertisements;
         }
 
+        [HttpGet("details/{id}")]
+        [AllowAnonymous]
+        public async Task<ActionResult<Advertisements>> GetAdvertisementsById(int id)
+        {
+            var advertisements = await _context.Advertisements
+                .FirstOrDefaultAsync(n => n.Id == id);
+
+            if (advertisements == null)
+                return NotFound();
+
+            return advertisements;
+        }
+
+
         [HttpGet("getlatest/{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Advertisements>>> GetLatestAdvertisements(int id)
         {
             var advertisements = await _context.Advertisements
@@ -42,6 +59,7 @@ namespace BBUAPI.Controllers
 
 
         [HttpPost]
+        [Authorize(Policy = "ManageNews")]
         public async Task<IActionResult> CreateAdvertisements([FromForm] CreateAdvertisementDto dto)
         {
             var advertisements = new Advertisements
@@ -72,6 +90,20 @@ namespace BBUAPI.Controllers
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetAdvertisements), new { id = advertisements.Id }, advertisements);
+        }
+
+
+        [HttpDelete("delete/{id}")]
+        [Authorize(Policy = "ManageNews")]
+        public async Task<ActionResult<Advertisements>> DeleteAdvertisements(int id)
+        {
+            var advertisements = await _context.Advertisements.FirstOrDefaultAsync(n => n.Id == id);
+            if (advertisements == null) return NotFound();
+
+            _context.Advertisements.Remove(advertisements);
+            await _context.SaveChangesAsync();
+
+            return advertisements;
         }
 
     }
